@@ -103,25 +103,6 @@ where
     ))
 }
 
-struct RedirectMiddleware;
-
-impl AfterMiddleware for RedirectMiddleware {
-    fn catch(&self, req: &mut Request, err: IronError) -> IronResult<Response> {
-        let gateway = {
-            let request_state = get_request_state!(req);
-            format!("{}", request_state.gateway)
-        };
-
-        if let Some(host) = req.headers.get::<headers::Host>() {
-            if host.hostname != gateway {
-                let url = Url::parse(&format!("http://{}/", gateway)).unwrap();
-                return Ok(Response::with((status::Found, Redirect(url))));
-            }
-        }
-
-        Err(err)
-    }
-}
 
 pub fn start_server(
     gateway: Ipv4Addr,
@@ -155,7 +136,6 @@ pub fn start_server(
 
     let mut chain = Chain::new(assets);
     chain.link(Write::<RequestSharedState>::both(request_state));
-    chain.link_after(RedirectMiddleware);
     chain.link_around(cors_middleware);
 
     let address = format!("{}:{}", gateway_clone, listening_port);
